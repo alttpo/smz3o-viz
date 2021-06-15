@@ -505,7 +505,7 @@ class GameState {
     // runs 'len' times
     for (uint i = 0; i < len; i++) {
           
-      offs = uint16(r[c++]) | uint16(r[c++]) << 8;
+      uint16 offs = uint16(r[c++]) | uint16(r[c++]) << 8;
 
       // all tiles are the same value:
       bool same = (offs & 0x8000) == 0x8000;
