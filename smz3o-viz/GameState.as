@@ -405,13 +405,22 @@ class GameState {
       //message("packetType = " + fmtHex(packetType, 2));
       switch (packetType) {
         case 0x01: c = deserialize_location(r, c); break;
+        case 0x02: c += 2; break;
         case 0x03: c = deserialize_sprites(r, c); break;
         case 0x04: c = deserialize_sprites(r, c, true); break;
+        case 0x05: c = pass_wram(r, c); break;
+        case 0x06: c = pass_sram(r, c); break;
+        case 0x07: c += 9; break;
+        case 0x08: c += 0x2A0; break;
+        case 0x09: c = pass_ancillae(r, c); break;
+        case 0x0A: c += 2*r[c++]; break;
+        case 0x0B: c = pass_pvp(r, c); break;
         case 0x0C: c = deserialize_name(r, c); break;
+        case 0x0D: c += 0x56; break;
+        case 0x0E: c = pass_sram_buffer(r, c); break;
         case 0x0F: c = deserialize_sm_location(r, c); break;
         case 0x10: c = deserialize_sm_sprite(r, c); break;
         default:
-          if (packetType <= 0x10) { break; }
           message("unknown packet type " + fmtHex(packetType, 2) + " at offs " + fmtHex(c, 3));
           break;
       }
@@ -458,6 +467,93 @@ class GameState {
     }
 
     return c;
+  }
+  
+  //good
+  int pass_wram(array<uint8> r, int c) {
+    auto count = r[c++];
+    auto offs = uint16(r[c++]) | (uint16(r[c++]) << 8);
+
+    if (offs == 0xC172) {
+      // no need for count loop since there's only one byte:
+      c += 6;
+    } else if (offs == 0xF37C) {
+      c += 6*count;
+    }
+
+    return c;
+  }
+  
+  // good
+  int pass_sram(array<uint8> r, int c) {  
+    c += 4;
+    uint16 count = uint16(r[c++]) | (uint16(r[c++]) << 8);
+    return c + count;
+  }
+  
+  //good
+  int pass_tilemaps(array<uint8> r, int c) {
+    // read timestamp:
+    c += 4;
+    // read location:
+    c += 3;
+    // start in array:
+    c++;
+    // read number of runs:
+    uint8 len = r[c++];
+
+    // runs 'len' times
+    for (uint i = 0; i < len; i++) {
+          
+      offs = uint16(r[c++]) | uint16(r[c++]) << 8;
+
+      // all tiles are the same value:
+      bool same = (offs & 0x8000) == 0x8000;
+
+      // mask off signal bits to get pure offset:
+      offs &= 0x3FFF;
+
+      // read count of tiles:
+      uint8 count = r[c++];
+
+      if (same) {c += 3;} 
+      else {c += 3*count;}
+    }
+
+    return c;
+  }
+  
+  //bad
+  int pass_ancillae(array<uint8> r, int c) {
+    uint8 count = r[c++];
+    for (uint i = 0; i < count; i++) {
+      uint8 value = r[c++];
+      if (value > 0x80) {value &= 0x7F;}
+      uint len;
+    
+      len = (value < 5) ? 0x20 : 0x16;
+      c += len;
+    }
+
+    return c;
+  }
+  
+  //good
+  int pass_pvp(array<uint8> r, int c) {
+    if (r[c++] == 1) {
+      c += 8;
+    }
+    c += 2;
+    uint8 len = r[c++];
+    c += 9 * len;
+    return c;
+  }
+  
+  //good
+  int pass_sram_buffer(array<uint8> r, int c) {
+    c += 2;
+    uint16 count = uint16(r[c++]) | (uint16(r[c++]) << 8);
+    return c + count;
   }
 
   int deserialize_sm_location(array<uint8> r, int c) {
