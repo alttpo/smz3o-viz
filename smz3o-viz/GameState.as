@@ -523,7 +523,7 @@ class GameState {
     return c;
   }
   
-  //bad
+  //good
   int pass_ancillae(array<uint8> r, int c) {
     uint8 count = r[c++];
     for (uint i = 0; i < count; i++) {
