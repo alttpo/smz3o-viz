@@ -411,6 +411,7 @@ class GameState {
         case 0x0F: c = deserialize_sm_location(r, c); break;
         case 0x10: c = deserialize_sm_sprite(r, c); break;
         default:
+          if (packetType <= 0x10) { break; }
           message("unknown packet type " + fmtHex(packetType, 2) + " at offs " + fmtHex(c, 3));
           break;
       }
